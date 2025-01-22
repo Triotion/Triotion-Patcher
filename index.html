@@ -9,7 +9,9 @@
         h1 { color: #333; }
         .data { margin-top: 20px; }
         .status-code { margin-top: 10px; }
+        #chart { width: 80%; margin: auto; }
     </style>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
 </head>
 <body>
     <h1>Cloudflare Traffic Analytics</h1>
@@ -19,11 +21,62 @@
         <p>Loading traffic data...</p>
     </div>
 
+    <!-- Live Traffic Chart -->
+    <div id="chart"></div>
+
     <script>
-        // Replace this URL with your Google Apps Script Web App URL
+        // Replace this URL with your Google Apps Script Web App URL or PHP endpoint
         const apiUrl = 'https://script.google.com/macros/s/AKfycbzaJtA7W8VyM4Jo-3b_atczZHAG59tqXv8pDqh9_lY2TyDTAq5Bj0nUuPD8ZMiVYHZD/exec'; 
 
-        // Fetch the Cloudflare traffic data
+        // Initialize chart
+        let chart = Highcharts.chart('chart', {
+            chart: {
+                type: 'line',
+                zoomType: 'x',
+                events: {
+                    load: function () {
+                        let series = this.series[0];
+                        setInterval(function () {
+                            fetch(apiUrl)
+                                .then(response => response.json())
+                                .then(data => {
+                                    // Update total requests data
+                                    const totalRequests = data.total_requests || 0;
+                                    
+                                    // Update the chart data dynamically
+                                    const x = (new Date()).getTime(); // Current time
+                                    const y = totalRequests; // Latest traffic data
+
+                                    series.addPoint([x, y], true, series.data.length > 40);
+                                })
+                                .catch(error => {
+                                    console.error('Error fetching data:', error);
+                                });
+                        }, 1000); // Update every 1 second
+                    }
+                }
+            },
+            title: {
+                text: 'Live Cloudflare Traffic Requests'
+            },
+            xAxis: {
+                type: 'datetime',
+                title: {
+                    text: 'Time'
+                }
+            },
+            yAxis: {
+                title: {
+                    text: 'Requests'
+                }
+            },
+            series: [{
+                name: 'Total Requests',
+                data: []
+            }]
+        });
+
+        // Fetch the initial traffic data
         fetch(apiUrl)
             .then(response => response.json())
             .then(data => {
